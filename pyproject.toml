@@ -1,0 +1,13 @@
+[project]
+name = "restaurant-bot"
+version = "0.1.0"
+description = "레스토랑에서 사용하는 AI Agents입니다. 메뉴/재료/알레르기 등에 대한 질문에 응답하는 Menu Agent, 주문을 받고 확인하는 Order Agent, 테이블 예약을 처리하는 Reservation Agent를 사용합니다."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "numpy>=2.3.2",
+    "openai-agents[voice]>=0.2.8",
+    "python-dotenv>=1.1.1",
+    "sounddevice>=0.5.2",
+    "streamlit>=1.48.1",
+]
