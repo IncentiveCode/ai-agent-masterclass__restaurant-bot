@@ -12,6 +12,7 @@ from agents import (
 )
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from agents.extensions import handoff_filters
+from handoff import make_handoff
 from models import UserAccountContext, InputGuardRailOutput, HandoffData
 from sub_agents.order_agent import order_agent
 from sub_agents.reservation_agent import reservation_agent
@@ -92,23 +93,6 @@ def dynamic_triage_agent_instruction(
 	"""
 
 
-def handle_handoff(
-	wrapper: RunContextWrapper[UserAccountContext],
-	input_data: HandoffData,
-):
-	with st.chat_message("ai"):
-		st.write(f"[{input_data.to_agent_name}로 handoff]")
-
-
-def make_handoff(agent):
-	return handoff(
-		agent=agent,
-		on_handoff=handle_handoff,
-		input_type=HandoffData,
-		input_filter=handoff_filters.remove_all_tools,
-	)
-
-
 triage_agent = Agent[UserAccountContext](
 	name="triage agent",
 	instructions=dynamic_triage_agent_instruction,
@@ -116,9 +100,8 @@ triage_agent = Agent[UserAccountContext](
 		off_topic_guardrail,
 	],
 	handoffs=[
-		# make_handoff(menu_agent),
-		# make_handoff(order_agent),
-		# make_handoff(reservation_agent),
-		menu_agent, order_agent, reservation_agent
+		make_handoff(menu_agent),
+		make_handoff(order_agent),
+		make_handoff(reservation_agent),
 	]
 )

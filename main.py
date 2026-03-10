@@ -62,6 +62,7 @@ async def display_history():
 
 		elif "type" in message and message["type"] == "function_call_output":
 			if message["output"].startswith('{"assistant":'):
+				print(message)
 				data = json.loads(message["output"]);
 				dp_agent = data["assistant"]
 				st.caption(f"[ {dp_agent}로 handoff ]")
@@ -94,6 +95,7 @@ async def run_agent(message):
 
 				elif event.type == "agent_updated_stream_event":
 					new_agent = event.new_agent.name
+
 					if current_agent != new_agent:
 						st.session_state["agent"] = event.new_agent
 						current_agent = new_agent

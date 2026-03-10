@@ -1,16 +1,6 @@
 from agents import Agent, RunContextWrapper
 from models import UserAccountContext
-from tools import (
-	check_allergens, 
-	get_dietary_menu, 
-	get_full_menu, 
-	get_ingredient_origin, 
-	get_menu_detail,
-	get_safe_menu, 
-	get_special_menu, 
-	recommend_menu
-)
-from tools import MENU_TOOLS
+from tools import MENU_TOOLS, AgentToolUsageLoggingHooks
 
 
 def dynamic_menu_agent_instructions(
@@ -54,5 +44,6 @@ def dynamic_menu_agent_instructions(
 menu_agent = Agent[UserAccountContext](
 	name="menu agent",
 	instructions=dynamic_menu_agent_instructions,
-	tools=MENU_TOOLS
+	tools=MENU_TOOLS,
+	hooks=AgentToolUsageLoggingHooks(),
 )

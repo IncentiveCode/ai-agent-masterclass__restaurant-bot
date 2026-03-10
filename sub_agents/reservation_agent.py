@@ -1,6 +1,6 @@
 from agents import Agent, RunContextWrapper
 from models import UserAccountContext
-from tools import RESERVATION_TOOLS
+from tools import RESERVATION_TOOLS, AgentToolUsageLoggingHooks
 
 def dynamic_reservation_agent_instructions(
 	wrapper: RunContextWrapper[UserAccountContext],
@@ -44,5 +44,6 @@ def dynamic_reservation_agent_instructions(
 reservation_agent = Agent[UserAccountContext](
 	name="reservation agent",
 	instructions=dynamic_reservation_agent_instructions,
-	tools=RESERVATION_TOOLS
+	tools=RESERVATION_TOOLS,
+	hooks=AgentToolUsageLoggingHooks(),
 )

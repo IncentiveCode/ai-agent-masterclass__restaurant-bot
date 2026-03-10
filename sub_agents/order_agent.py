@@ -1,6 +1,6 @@
 from agents import Agent, RunContextWrapper
 from models import UserAccountContext
-from tools import ORDER_TOOLS
+from tools import ORDER_TOOLS, AgentToolUsageLoggingHooks
 
 
 def dynamic_order_agent_instructions(
@@ -43,5 +43,6 @@ def dynamic_order_agent_instructions(
 order_agent = Agent[UserAccountContext](
 	name="order agent",
 	instructions=dynamic_order_agent_instructions,
-	tools=ORDER_TOOLS
+	tools=ORDER_TOOLS,
+	hooks=AgentToolUsageLoggingHooks(),
 )
