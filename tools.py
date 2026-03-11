@@ -11,10 +11,12 @@ from data import (
     SEATING_OPTIONS,
     orders_store,
     reservations_store,
+		complaints_store,
     waitlist_store,
     booked_slots,
     get_next_order_id,
     get_next_reservation_id,
+		get_next_complaint_id,
 )
 
 import streamlit as st
@@ -33,6 +35,10 @@ class OrderChange(BaseModel):
 	menu_name: str
 	quantity: int = 1
 	options: str = ""
+
+class CompensationItem(BaseModel):
+    type: str = ""          # "메뉴 교체", "음료 제공", "매니저 연결" 등
+    description: str = ""
 
 
 # ============================================================
@@ -810,6 +816,250 @@ def get_ingredient_origin(menu_name: str) -> str:
 
 
 # ============================================================
+# 도구 함수
+# ============================================================
+
+@function_tool
+def submit_complaint(
+    category: str,
+    description: str,
+    severity: str = "medium",
+    related_order_id: str = "",
+    related_reservation_id: str = "",
+) -> str:
+    """
+    고객의 불만사항을 접수한다.
+    category: 불만 유형 (food, service, hygiene, wait_time, reservation, other)
+    description: 불만 내용 상세
+    severity: 심각도 (low, medium, high, critical)
+    related_order_id: 관련 주문번호 (선택)
+    related_reservation_id: 관련 예약번호 (선택)
+    """
+    complaint_id = get_next_complaint_id()
+
+    complaint = {
+        "complaint_id": complaint_id,
+        "category": category,
+        "description": description,
+        "severity": severity,
+        "related_order_id": related_order_id,
+        "related_reservation_id": related_reservation_id,
+        "status": "접수됨",
+        "actions_taken": [],
+        "created_at": datetime.now().isoformat(),
+    }
+    complaints_store[complaint_id] = complaint
+
+    severity_label = {
+        "low": "경미",
+        "medium": "보통",
+        "high": "심각",
+        "critical": "긴급",
+    }
+
+    result = {
+        "접수번호": complaint_id,
+        "불만유형": category,
+        "심각도": severity_label.get(severity, severity),
+        "상태": "접수 완료",
+        "안내": "소중한 의견이 정상적으로 접수되었습니다.",
+    }
+
+    if severity in ("high", "critical"):
+        result["추가안내"] = "심각한 사안으로 분류되어 담당 매니저에게 즉시 전달됩니다."
+
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
+
+@function_tool
+def get_complaint_status(complaint_id: str) -> str:
+    """
+    접수된 불만사항의 처리 현황을 조회한다.
+    complaint_id: 접수번호
+    """
+    if complaint_id not in complaints_store:
+        return f"접수번호 '{complaint_id}'를 찾을 수 없습니다."
+
+    c = complaints_store[complaint_id]
+    result = {
+        "접수번호": c["complaint_id"],
+        "불만유형": c["category"],
+        "내용요약": c["description"][:100],
+        "상태": c["status"],
+        "조치내역": c["actions_taken"] if c["actions_taken"] else "아직 조치 내역이 없습니다.",
+        "접수시각": c["created_at"],
+    }
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
+
+@function_tool
+def add_complaint_action(complaint_id: str, action: str) -> str:
+    """
+    불만사항에 대한 조치 내역을 기록한다.
+    complaint_id: 접수번호
+    action: 조치 내용 (예: "해당 메뉴 재조리 진행", "매니저에게 전달 완료")
+    """
+    if complaint_id not in complaints_store:
+        return f"접수번호 '{complaint_id}'를 찾을 수 없습니다."
+
+    c = complaints_store[complaint_id]
+    c["actions_taken"].append({
+        "action": action,
+        "timestamp": datetime.now().isoformat(),
+    })
+    c["status"] = "처리중"
+
+    return json.dumps({
+        "접수번호": complaint_id,
+        "조치내용": action,
+        "상태": "처리중",
+    }, ensure_ascii=False, indent=2)
+
+
+@function_tool
+def escalate_to_manager(complaint_id: str, reason: str) -> str:
+    """
+    불만사항을 매니저에게 에스컬레이션한다.
+    complaint_id: 접수번호
+    reason: 에스컬레이션 사유
+    """
+    if complaint_id not in complaints_store:
+        return f"접수번호 '{complaint_id}'를 찾을 수 없습니다."
+
+    c = complaints_store[complaint_id]
+    c["status"] = "매니저 검토중"
+    c["actions_taken"].append({
+        "action": f"매니저 에스컬레이션: {reason}",
+        "timestamp": datetime.now().isoformat(),
+    })
+
+    result = {
+        "접수번호": complaint_id,
+        "상태": "매니저 검토중",
+        "에스컬레이션사유": reason,
+        "안내": "담당 매니저에게 전달되었습니다. 빠른 시일 내에 연락드리겠습니다.",
+    }
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
+
+@function_tool
+def offer_compensation(complaint_id: str, compensation: CompensationItem) -> str:
+    """
+    가능한 범위 내에서 보상을 안내한다. 금전적 보상은 매니저 확인 후 가능.
+    complaint_id: 접수번호
+    compensation: 보상 내용 (type: 보상 유형, description: 상세 내용)
+    """
+    if complaint_id not in complaints_store:
+        return f"접수번호 '{complaint_id}'를 찾을 수 없습니다."
+
+    allowed_types = ["메뉴 교체", "음료 제공", "재조리", "매니저 연결"]
+    requires_manager = ["환불", "할인권", "무료 식사", "금전 보상"]
+
+    c = complaints_store[complaint_id]
+
+    if compensation.type in requires_manager:
+        c["actions_taken"].append({
+            "action": f"보상 요청 (매니저 승인 필요): {compensation.type} - {compensation.description}",
+            "timestamp": datetime.now().isoformat(),
+        })
+        return json.dumps({
+            "접수번호": complaint_id,
+            "보상유형": compensation.type,
+            "상태": "매니저 승인 대기",
+            "안내": f"{compensation.type}은(는) 매니저 확인 후 안내 가능합니다. 잠시만 기다려 주세요.",
+        }, ensure_ascii=False, indent=2)
+
+    c["actions_taken"].append({
+        "action": f"보상 제공: {compensation.type} - {compensation.description}",
+        "timestamp": datetime.now().isoformat(),
+    })
+
+    return json.dumps({
+        "접수번호": complaint_id,
+        "보상유형": compensation.type,
+        "상세": compensation.description,
+        "상태": "보상 안내 완료",
+    }, ensure_ascii=False, indent=2)
+
+
+@function_tool
+def get_related_order(order_id: str) -> str:
+    """
+    불만과 관련된 주문 내역을 조회한다.
+    order_id: 주문번호
+    """
+    if order_id not in orders_store:
+        return f"주문번호 '{order_id}'를 찾을 수 없습니다."
+
+    order = orders_store[order_id]
+    result = {
+        "주문번호": order["order_id"],
+        "주문항목": [
+            f"{oi['menu_name']} x{oi['quantity']}" + (f" ({oi['options']})" if oi.get('options') else "")
+            for oi in order["items"]
+        ],
+        "총액": f"{order['total']:,}원",
+        "상태": order["status"],
+        "주문시각": order["created_at"],
+    }
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
+
+@function_tool
+def get_related_reservation(reservation_id: str) -> str:
+    """
+    불만과 관련된 예약 내역을 조회한다.
+    reservation_id: 예약번호
+    """
+    if reservation_id not in reservations_store:
+        return f"예약번호 '{reservation_id}'를 찾을 수 없습니다."
+
+    r = reservations_store[reservation_id]
+    result = {
+        "예약번호": r["reservation_id"],
+        "날짜": r["date"],
+        "시간": r["time"],
+        "인원": f"{r['party_size']}명",
+        "예약자": r["customer_name"],
+        "좌석": r.get("seating_preference", "지정 없음"),
+        "특별요청": r.get("special_requests", "없음"),
+        "상태": r["status"],
+    }
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
+
+@function_tool
+def resolve_complaint(complaint_id: str, resolution_summary: str) -> str:
+    """
+    불만사항 처리를 완료한다.
+    complaint_id: 접수번호
+    resolution_summary: 처리 결과 요약
+    """
+    if complaint_id not in complaints_store:
+        return f"접수번호 '{complaint_id}'를 찾을 수 없습니다."
+
+    c = complaints_store[complaint_id]
+    c["status"] = "처리 완료"
+    c["resolution"] = resolution_summary
+    c["resolved_at"] = datetime.now().isoformat()
+    c["actions_taken"].append({
+        "action": f"처리 완료: {resolution_summary}",
+        "timestamp": datetime.now().isoformat(),
+    })
+
+    result = {
+        "접수번호": complaint_id,
+        "상태": "처리 완료",
+        "처리결과": resolution_summary,
+        "안내": "불편을 드려 다시 한번 죄송합니다. 소중한 의견 감사합니다.",
+    }
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
+
+
+
+
+# ============================================================
 # 에이전트별 도구 모음 (편의용 export)
 # ============================================================
 
@@ -843,6 +1093,17 @@ MENU_TOOLS = [
 	recommend_menu,
 	get_special_menu,
 	get_ingredient_origin,
+]
+
+COMPLAIN_TOOLS = [
+    submit_complaint,
+    get_complaint_status,
+    add_complaint_action,
+    escalate_to_manager,
+    offer_compensation,
+    get_related_order,
+    get_related_reservation,
+    resolve_complaint,
 ]
 
 

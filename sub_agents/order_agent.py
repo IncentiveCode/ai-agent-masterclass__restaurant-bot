@@ -2,6 +2,9 @@ from agents import Agent, RunContextWrapper
 from models import UserAccountContext
 from tools import ORDER_TOOLS, AgentToolUsageLoggingHooks
 
+from input_guardrails import off_topic_guardrail
+from output_guardrails.order_output_guardrails import order_output_guardrail
+
 
 def dynamic_order_agent_instructions(
 	wrapper: RunContextWrapper[UserAccountContext],
@@ -35,6 +38,13 @@ def dynamic_order_agent_instructions(
 	- 모호한 주문은 반드시 되물어 확인한다
 	- 금액 관련 질문에는 메뉴 가격을 기반으로 정확히 답한다
 
+	 에이전트 전환 원칙:
+		- 불만 사항 관련 → complain_agent로 직접 연결
+    - 메뉴 상세 정보, 알레르기 질문 → menu_agent로 직접 연결
+    - 예약 관련 요청 → reservation_agent로 직접 연결
+    - 위에 해당하지 않는 범위 밖 요청 → triage_agent로 연결
+    - 직접 처리할 수 없는 요청을 억지로 처리하지 않는다
+
 	알레르기 정보: {wrapper.context.allergies if wrapper.context.allergies else "등록된 알레르기 정보 없음"}
 	{"⚠️ 알레르기가 있는 고객입니다. 주문 시 해당 성분 포함 여부를 반드시 안내하세요." if wrapper.context.allergies else ""}
 """
@@ -45,4 +55,10 @@ order_agent = Agent[UserAccountContext](
 	instructions=dynamic_order_agent_instructions,
 	tools=ORDER_TOOLS,
 	hooks=AgentToolUsageLoggingHooks(),
+	input_guardrails=[
+		off_topic_guardrail,
+	],
+	output_guardrails=[
+		order_output_guardrail,
+	]
 )

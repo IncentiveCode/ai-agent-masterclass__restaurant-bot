@@ -196,13 +196,16 @@ SEATING_OPTIONS = {
 }
 
 # ============================================================
-# 인메모리 저장소 (주문 & 예약)
+# 인메모리 저장소 (주문 & 예약 & 불만사항)
 # ============================================================
 orders_store: dict = {}
 _order_counter = 1000
 
 reservations_store: dict = {}
 _reservation_counter = 5000
+
+complaints_store: dict = {}
+_complaint_counter = 3000
 
 waitlist_store: list = []
 
@@ -237,3 +240,8 @@ def get_next_reservation_id() -> str:
 	global _reservation_counter
 	_reservation_counter += 1
 	return f"RSV-{_reservation_counter}"
+
+def get_next_complaint_id() -> str:
+    global _complaint_counter
+    _complaint_counter += 1
+    return f"CMP-{_complaint_counter}"

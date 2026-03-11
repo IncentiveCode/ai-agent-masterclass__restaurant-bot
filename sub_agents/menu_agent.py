@@ -1,6 +1,8 @@
 from agents import Agent, RunContextWrapper
 from models import UserAccountContext
 from tools import MENU_TOOLS, AgentToolUsageLoggingHooks
+from input_guardrails import off_topic_guardrail
+from output_guardrails.menu_output_guardrails import menu_output_guardrail
 
 
 def dynamic_menu_agent_instructions(
@@ -38,6 +40,13 @@ def dynamic_menu_agent_instructions(
 	- 메뉴 설명은 맛과 특징이 잘 전달되도록 풍부하게 한다
 	- 고객의 취향이나 상황에 맞는 추천을 적극적으로 한다
 	- 주문 요청이 들어오면 order_agent로 안내한다
+
+	에이전트 전환 원칙:
+		- 불만 사항 관련 → complain_agent로 직접 연결
+    - 주문 요청 → order_agent로 직접 연결
+    - 예약 관련 요청 → reservation_agent로 직접 연결
+    - 위에 해당하지 않는 범위 밖 요청 → triage_agent로 연결
+    - 직접 처리할 수 없는 요청을 억지로 처리하지 않는다
 """
 
 
@@ -46,4 +55,10 @@ menu_agent = Agent[UserAccountContext](
 	instructions=dynamic_menu_agent_instructions,
 	tools=MENU_TOOLS,
 	hooks=AgentToolUsageLoggingHooks(),
+	input_guardrails=[
+		off_topic_guardrail,
+	],
+	output_guardrails=[
+		menu_output_guardrail,
+	]
 )

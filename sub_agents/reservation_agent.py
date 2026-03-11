@@ -1,6 +1,8 @@
 from agents import Agent, RunContextWrapper
 from models import UserAccountContext
 from tools import RESERVATION_TOOLS, AgentToolUsageLoggingHooks
+from input_guardrails import off_topic_guardrail
+from output_guardrails.reservation_output_guardrails import reservation_output_guardrail
 
 def dynamic_reservation_agent_instructions(
 	wrapper: RunContextWrapper[UserAccountContext],
@@ -38,6 +40,13 @@ def dynamic_reservation_agent_instructions(
 	- 원하는 시간이 불가능할 때는 반드시 대안을 함께 제시한다
 	- 예약 완료 후에는 날짜, 시간, 인원, 특이사항을 한 번에 정리하여 안내한다
 	- 메뉴나 주문 관련 질문이 들어오면 해당 에이전트로 안내한다
+
+	에이전트 전환 원칙:
+		- 불만 사항 관련 → complain_agent로 직접 연결
+    - 메뉴 상세 정보, 알레르기 질문 → menu_agent로 직접 연결
+    - 주문 요청 → order_agent로 직접 연결
+    - 위에 해당하지 않는 범위 밖 요청 → triage_agent로 연결
+    - 직접 처리할 수 없는 요청을 억지로 처리하지 않는다
 """
 
 
@@ -46,4 +55,10 @@ reservation_agent = Agent[UserAccountContext](
 	instructions=dynamic_reservation_agent_instructions,
 	tools=RESERVATION_TOOLS,
 	hooks=AgentToolUsageLoggingHooks(),
+	input_guardrails=[
+		off_topic_guardrail,
+	],
+	output_guardrails=[
+		reservation_output_guardrail,
+	]
 )

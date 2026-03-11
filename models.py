@@ -19,3 +19,34 @@ class HandoffData(BaseModel):
 	issue_type: str
 	issue_description: str
 	reason: str
+
+
+class ComplainOutputGuardRailOutput(BaseModel):
+	contains_off_topic: bool
+	contains_menu_data: bool 
+	contains_order_data: bool 
+	contains_reservation_data: bool
+	reason: str
+
+class MenuOutputGuardRailOutput(BaseModel):
+	contains_off_topic: bool 
+	contains_complain_topic: bool
+	contains_order_data: bool
+	contains_reservation_data: bool
+	reason: str
+
+
+class OrderOutputGuardRailOutput(BaseModel):
+	contains_off_topic: bool 
+	contains_complain_topic: bool
+	contains_menu_data: bool
+	contains_reservation_data: bool
+	reason: str
+
+
+class ReservationOutputGuardRailOutput(BaseModel):
+	contains_off_topic: bool 
+	contains_complain_topic: bool
+	contains_menu_data: bool 
+	contains_order_data: bool
+	reason: str

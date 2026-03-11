@@ -11,8 +11,7 @@ def handle_handoff(
 	wrapper: RunContextWrapper[UserAccountContext],
 	input_data: HandoffData,
 ):
-	# st.caption(f"[ {input_data.to_agent_name}로 handoff ]")
-	pass
+	st.caption(f"[ {input_data.to_agent_name}로 handoff ]")
 
 
 def make_handoff(agent):
