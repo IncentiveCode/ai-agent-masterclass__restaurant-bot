@@ -58,6 +58,14 @@ user_account_ctx2 = UserAccountContext(
 	allergies=['대두', '참깨']
 )
 
+user_account_ctx3 = UserAccountContext(
+	customer_id=3,
+	customer_name="김철수",
+	party_size=3,
+	is_regular=True,
+	allergies=['참깨']
+)
+
 
 if "session" not in st.session_state:
 	st.session_state["session"] = SQLiteSession(
@@ -113,7 +121,7 @@ async def run_agent(message):
 				st.session_state["agent"],
 				message,
 				session=session,
-				context=user_account_ctx2,
+				context=user_account_ctx3,
 			)
 
 			async for event in stream.stream_events():
